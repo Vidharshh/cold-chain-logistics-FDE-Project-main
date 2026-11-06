@@ -23,6 +23,15 @@ from src.agent_tools import query_telemetry_db, fetch_corridor_conditions, searc
 
 load_dotenv(project_root / ".env")
 
+# Load shared system prompt for all agent interfaces
+_prompt_file = project_root / "src" / "prompts" / "system_prompt.txt"
+
+SYSTEM_PROMPT = (
+    _prompt_file.read_text(encoding="utf-8")
+    if _prompt_file.exists()
+    else "You are a helpful AI assistant."
+)
+
 class AgentState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
 
@@ -53,6 +62,16 @@ elif AGENT_LLM_SETTING == "DEEPSEEK":
         #     "reasoning_effort": "high"                     # Drives maximal reasoning depth for logic maps
         # }
     )
+elif AGENT_LLM_SETTING == "GROQ":
+    print("🤖 Brain Mode: Utilizing Groq Reasoner...")
+    from langchain_openai import ChatOpenAI
+    llm = ChatOpenAI(
+        model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
+        temperature=0,
+        openai_api_key=os.getenv("GROQ_API_KEY"),
+        base_url="https://api.groq.com/openai/v1",
+        max_tokens=2048,
+    )
 
 else:  # FALLBACK / DEFAULT RUNNER MODE
     print("🤗 Brain Mode: Local Fallback Activated. Binding Local Ollama (qwen2.5:7b)...")
@@ -66,7 +85,10 @@ llm_with_tools = llm.bind_tools(fde_tools)
 # 3. GRAPH ARCHITECTURE ASSEMBLY
 # ==========================================
 def reasoning_node(state: AgentState):
-    response = llm_with_tools.invoke(state["messages"])
+    messages = [
+        SystemMessage(content=SYSTEM_PROMPT)
+    ] + state["messages"]
+    response = llm_with_tools.invoke(messages)
     return {"messages": [response]}
 
 print("⚙️ Compiling LangGraph FDE Orchestrator...")
@@ -88,20 +110,7 @@ if __name__ == "__main__":
     print("🚀 FDE Supply Chain Orchestrator State Machine Online")
     print(f"   Configured Execution: [LLM: {AGENT_LLM_SETTING}] -> [Embeddings: {os.getenv('Embeddings_model', 'LOCAL')}]")
     print("="*55 + "\n")
-    
-    # Load the business-structured system prompt from the external file
-    prompt_path = project_root / "src" / "prompts" / "system_prompt.txt"
-    try:
-        with open(prompt_path, "r", encoding="utf-8") as f:
-            system_instructions = f.read()
-    except FileNotFoundError:
-        print(f"Error: Could not find {prompt_path}")
-        system_instructions = "You are a helpful AI assistant." # Basic fallback
-
-    system_prompt = SystemMessage(content=system_instructions)
-    
     thread_config = {"configurable": {"thread_id": "production_test_1"}}
-    fde_agent.invoke({"messages": [system_prompt]}, config=thread_config)
     
     while True:
         user_input = input("\nDispatcher > ")

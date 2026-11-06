@@ -2,7 +2,7 @@ import os
 import sys
 import uuid
 import json
-import urllib
+import urllib.parse
 from pathlib import Path
 from dotenv import load_dotenv
 import streamlit as st
@@ -104,7 +104,7 @@ with st.sidebar:
     
     st.markdown("---")
     st.caption(f"Session Token: `{st.session_state.thread_id[:8]}...`")
-    st.markdown(f"**Reasoning Architecture:** `{os.getenv('Agent_llm', 'DEEPSEEK')}`")
+    st.markdown(f"**Reasoning Architecture:** `{os.getenv('Agent_llm', 'OLLAMA')}`")
     
     st.markdown("---")
     if st.button("🗑️ Purge Dispatch Workspace Session", use_container_width=True):
@@ -139,6 +139,12 @@ if app_mode == "🧊 Dispatch Console":
     if user_input := st.chat_input("Query fleet telemetry, corridor updates, or compliance thresholds..."):
         
         st.session_state.ui_messages.append({"role": "user", "content": user_input})
+        write_audit_log(
+            session_id=st.session_state.thread_id,
+            node_name="user",
+            tool_name="User Prompt",
+            content=user_input
+        )
         with st.chat_message("user", avatar="👤"):
             st.markdown(user_input)
 

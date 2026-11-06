@@ -1,6 +1,6 @@
 from pathlib import Path
 import pandas as pd
-import urllib
+import urllib.parse
 import os
 from sqlalchemy import create_engine
 from dotenv import load_dotenv
@@ -56,11 +56,16 @@ connection_string = (
 
 params = urllib.parse.quote_plus(connection_string)
 
-engine = create_engine(f"mssql+pyodbc:///?odbc_connect={params}")
+engine = create_engine(
+    f"mssql+pyodbc:///?odbc_connect={params}",
+    fast_executemany=True,  # batch inserts instead of row-by-row
+)
 
 # 4. Ingest data into the messy table name
 table_name = 'TBL_SC_FLEET_HIST_RAW'
 print(f"Ingesting into {table_name}. This may take a minute...")
-df_legacy.to_sql(table_name, engine, if_exists='replace', index=False, schema='dbo')
+df_legacy.to_sql(
+    table_name, engine, if_exists='replace', index=False, schema='dbo', chunksize=5000
+)
 
 print("✅ Legacy data ingestion complete!")

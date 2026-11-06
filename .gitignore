@@ -1,4 +1,25 @@
+# Secrets (never commit)
 .env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+*.pem
+
+# Python
 __pycache__/
+*.pyc
 venv/
 .venv/
+
+# macOS
+.DS_Store
+
+# Local ingestion state (tied to your own Pinecone index)
+data/cache/
+
+# Editor and AI tool workspace files
+.agents/
+.claude/
+
+# Scratch SQL files from the editor
+Untitled*.sql
